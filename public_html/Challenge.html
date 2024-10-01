@@ -5,18 +5,22 @@
     <title>Problem 1</title>
     <meta charset="utf-8" />
     <script>
-        window.addEventListener("load", () => {
+        window.addEventListener("DOMContentLoaded", () => {
             console.log("loaded via javascript");
-            //TODO: add any dextra onload processing you may need here (hint: you'll likely want to start here for the JS challenge)
-        document.querySelectorAll('nav ul li a').forEach(link => {
-            link.addEventListener('click', function(event) {
-            event.preventDefault();
-            const linkText = this.textContent;
-            document.querySelector('h1').textContent = linkText;
-            document.title = linkText;
+
+            document.querySelectorAll('nav ul li a').forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    const linkText = this.textContent;
+                    document.querySelector('h1').textContent = linkText;
+                    document.title = linkText;
+
+                    // Remove markers from the clicked navigation item
+                    this.parentElement.style.listStyleType = 'none';
+                });
+            });
         });
-  });
-        });
+
         function getCurrentSelection() {
             setTimeout(() => {
                 //added this delay here as some solutions may require it to update properly (i.e., click code may complete before the navigation changes)
@@ -65,7 +69,7 @@
     text-transform: capitalize;
   }
 
-  /* Add some styling of your choice */
+  /* Added some more */
   body {
     font-family: Arial, sans-serif;
     background-color: #e0e0e0;
@@ -75,6 +79,7 @@
   .content ul {
     list-style-type: disc;
   }
+
     </style>
     <!-- make the necessary edits above this line -->
 
