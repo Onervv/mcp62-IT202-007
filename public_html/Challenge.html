@@ -8,6 +8,14 @@
         window.addEventListener("load", () => {
             console.log("loaded via javascript");
             //TODO: add any dextra onload processing you may need here (hint: you'll likely want to start here for the JS challenge)
+        document.querySelectorAll('nav ul li a').forEach(link => {
+            link.addEventListener('click', function(event) {
+            event.preventDefault();
+            const linkText = this.textContent;
+            document.querySelector('h1').textContent = linkText;
+            document.title = linkText;
+        });
+  });
         });
         function getCurrentSelection() {
             setTimeout(() => {
