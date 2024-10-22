@@ -29,7 +29,7 @@ function processCars($cars) {
     $currentYear = date("Y");
     $processedCars = []; // result array
     $classic_age = 25; // don't change this value
-
+    // mcp62 10/21/2024
     foreach ($cars as $car) {
         $car['age'] = $currentYear - $car['year'];
         $car['isClassic'] = $car['age'] >= $classic_age; // Ensure correct comparison

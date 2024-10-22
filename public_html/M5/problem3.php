@@ -47,6 +47,7 @@ function joinArrays($users, $activities) {
     
     $joined = []; // result array
 
+    
     // Create a lookup array for activities
     $activityLookup = [];
     foreach ($activities as $activity) {
@@ -54,6 +55,7 @@ function joinArrays($users, $activities) {
     }
 
     // Join users with their activities
+    // mcp62 10/21/2024
     foreach ($users as $user) {
         $userActivity = isset($activityLookup[$user['userId']]) ? $activityLookup[$user['userId']] : null;
         $joined[] = [
