@@ -1,7 +1,7 @@
 <?php
 $a1 = [
     ["id" => 1, "name" => "Sparrow", "size" => "small", "color" => "brown", "region" => "North America"],
-    ["id" => 2, "name" => "Robin", "size" => "small", "color" => "red", "region" => "Europe"]
+    ["id" => 2, "name" => "Robin", "size" => "small", "color" => "red", "region" => "Europe", "Weight" => "Heavy"],
 ];
 
 $a2 = [
@@ -27,6 +27,17 @@ function processBirds($birds) {
     // TODO add logic here to create a new array with only name, color, and region
     $subset = []; // result array
     // Start edits
+    foreach ($birds as $bird){
+        
+        if (key_exists("name", $bird) && key_exists("color", $bird) && key_exists("region", $bird)) {
+            $subset[] = [
+                'name' => $bird['name'],
+                'color' => $bird['color'],
+                'region' => $bird['region']
+            ];
+    
+        }
+    }
     
     // End edits
     echo "<pre>" . var_export($subset, true) . "</pre>";

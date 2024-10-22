@@ -25,17 +25,21 @@ function processCars($cars) {
     
     // Note: use the $cars variable to iterate over, don't directly touch $a1-$a4
     // TODO add logic here to create a new array with original properties plus age and isClassic
-    $currentYear = null; // determine current year
+    // Set the current year
+    $currentYear = date("Y");
     $processedCars = []; // result array
     $classic_age = 25; // don't change this value
-    // Start edits
-   
-    // End edits
-    echo "<pre>" . var_export($processedCars, true) . "</pre>";
+
+    foreach ($cars as $car) {
+        $car['age'] = $currentYear - $car['year'];
+        $car['isClassic'] = $car['age'] >= $classic_age; // Ensure correct comparison
+        $processedCars[] = $car;
+    }
     
+    echo "<pre>" . var_export($processedCars, true) . "</pre>";
+    return $processedCars;
 }
 
-echo "Problem 2: Getting Classy<br>";
 ?>
 <table>
     <thead>
