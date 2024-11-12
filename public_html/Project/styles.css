@@ -1,25 +1,53 @@
+/* LinkedIn-themed alert styles */
 .alert-success {
-    background-color: green
+    background-color: #0073b1; /* LinkedIn blue */
+    color: white;
 }
 
 .alert-warning {
-    background-color: rgb(255, 0, 0);
+    background-color: #ffcc00; /* Yellow for warning */
+    color: black;
 }
 
 .alert-danger {
-    background-color: red;
+    background-color: #d9534f; /* Red for danger */
+    color: white;
 }
 
 .alert-info {
-    background-color: teal;
+    background-color: #5bc0de; /* Light blue for info */
+    color: white;
 }
-nav li{display: inline; background-color: rebeccapurple;}
-nav li a{color: hotpink}
-input{border-radius: 50%;}
-body{
-    background-color: hotpink;
-    color: rgb(153, 0, 153);
 
+/* LinkedIn-themed navigation styles */
+nav li {
+    display: inline;
+    background-color: #283e4a; /* Darker LinkedIn gray */
+    padding: 8px;
+    margin-right: 5px;
+}
+
+nav li a {
+    color: #ffffff; /* White text for links */
+    text-decoration: none;
+}
+
+nav li a:hover {
+    color: #0073b1; /* LinkedIn blue on hover */
+}
+
+/* LinkedIn-themed input styles */
+input {
+    border-radius: 4px; /* Subtle rounded corners */
+    border: 1px solid #0073b1; /* LinkedIn blue border */
+    padding: 8px;
+}
+
+/* LinkedIn-themed body styles */
+body {
+    background-color: #f3f6f8; /* Light grey background */
+    color: #333333; /* Dark gray text */
+    font-family: Arial, sans-serif; /* Professional font */
 }
 
 
