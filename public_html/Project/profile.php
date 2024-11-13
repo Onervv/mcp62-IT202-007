@@ -120,20 +120,41 @@ $username = get_username();
 </form>
 
 <script>
+    // mcp62 11/12/2024
     function validate(form) {
-        let pw = form.newPassword.value;
-        let con = form.confirmPassword.value;
-        let isValid = true;
-        //TODO add other client side validation....
+    let pw = form.newPassword.value;
+    let con = form.confirmPassword.value;
+    let email = form.email.value;
+    let username = form.username.value;
+    let currentPassword = form.currentPassword.value;
+    let isValid = true;
 
-        //example of using flash via javascript
-        //find the flash container, create a new element, appendChild
-        if (pw !== con) {
-            flash("Password and Confrim password must match", "warning");
+    // Email Validation
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        flash("[CLINET] Please enter a valid email address", "warning");
+        isValid = false;
+    }
+
+    // Username Validation
+    if (!username || !/^[a-z0-9_-]{3,16}$/i.test(username)) {
+        flash("[CLINET] Username must contain 3-16 characters (letters, numbers, underscores, or hyphens)", "warning");
+        isValid = false;
+    }
+
+    // Password Validation (only if attempting password reset)
+    if (currentPassword || pw || con) {
+        if (pw.length < 8) {
+            flash("[CLINET] New password must be at least 8 characters long", "warning");
             isValid = false;
         }
-        return isValid;
+        if (pw !== con) {
+            flash("[CLINET] New password and confirmation must match", "warning");
+            isValid = false;
+        }
     }
+
+    return isValid;
+}
 </script>
 <?php
 require_once(__DIR__ . "/../../partials/flash.php");
