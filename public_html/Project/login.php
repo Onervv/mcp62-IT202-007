@@ -13,12 +13,30 @@ require(__DIR__ . "/../../partials/nav.php");
     <input type="submit" value="Login" />
 </form>
 <script>
+    // TODO - make functions for form validation in helpers.js if time allows
+    // mcp62 11/12/2024
     function validate(form) {
-        //TODO 1: implement JavaScript validation
-        //ensure it returns false for an error and true for success
+    let email = form.email.value;
+    let password = form.password.value;
+    let isValid = true;
 
-        return true;
+    if (!email) {
+        flash("[CLINET] Email is required", "warning");
+        isValid = false;
     }
+    if (!password) {
+        flash("[CLINET] Password is required", "warning");
+        isValid = false;
+    }
+     // Check if username follows the pattern
+     var usernamePattern = /^[a-z0-9_-]{3,16}$/;
+        if (!username.match(usernamePattern)) {
+            flash("[CLINET] Username must only contain 3-30 characters a-z, 0-9, _, or -");
+            isValid = false;
+        }
+
+    return isValid;
+}
 </script>
 <?php
 //TODO 2: add PHP Code
