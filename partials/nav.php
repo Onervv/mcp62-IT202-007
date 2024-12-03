@@ -22,6 +22,13 @@ if (($localWorks && $domain == "localhost") || $domain != "localhost") {
 }
 session_start();
 
+$nav_arr = [
+    "Home" => "home.php",
+    "Profile" => "profile.php",
+    "LinkedIn" => [
+        "Search Profiles" => "linkedin/search.php"
+    ]
+];
 
 ?>
 <!-- include css and js files -->
@@ -32,18 +39,32 @@ session_start();
         <?php if (is_logged_in()) : ?>
             <li><a href="<?php echo get_url('home.php'); ?>">Home</a></li>
             <li><a href="<?php echo get_url('profile.php'); ?>">Profile</a></li>
+            
+            <?php if (has_role("Admin")) : ?>
+                <li class="nav-dropdown">
+                    <a href="#">Admin</a>
+                    <div class="nav-dropdown-content">
+                        <a href="<?php echo get_url('admin/create_role.php'); ?>">Create Role</a>
+                        <a href="<?php echo get_url('admin/list_roles.php'); ?>">List Roles</a>
+                        <a href="<?php echo get_url('admin/assign_roles.php'); ?>">Assign Roles</a>
+                    </div>
+                </li>
+            <?php endif; ?>
+            
+            <li class="nav-dropdown">
+                <a href="#">LinkedIn</a>
+                <div class="nav-dropdown-content">
+                    <a href="<?php echo get_url('linkedin/search.php'); ?>">Search Profiles</a>
+                    <a href="<?php echo get_url('linkedin/view_profiles.php'); ?>">View Saved Profiles</a>
+                </div>
+            </li>
+            
+            <li style="margin-left: auto;"><a href="<?php echo get_url('logout.php'); ?>">Logout</a></li>
         <?php endif; ?>
+        
         <?php if (!is_logged_in()) : ?>
             <li><a href="<?php echo get_url('login.php'); ?>">Login</a></li>
             <li><a href="<?php echo get_url('register.php'); ?>">Register</a></li>
-        <?php endif; ?>
-        <?php if (has_role("Admin")) : ?>
-            <li><a href="<?php echo get_url('admin/create_role.php'); ?>">Create Role</a></li>
-            <li><a href="<?php echo get_url('admin/list_roles.php'); ?>">List Roles</a></li>
-            <li><a href="<?php echo get_url('admin/assign_roles.php'); ?>">Assign Roles</a></li>
-        <?php endif; ?>
-        <?php if (is_logged_in()) : ?>
-            <li><a href="<?php echo get_url('logout.php'); ?>">Logout</a></li>
         <?php endif; ?>
     </ul>
 </nav>
