@@ -11,24 +11,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_data'])) {
         $db = getDB();
         $profile_data = json_decode($_POST['profile_data'], true);
         
-        // Extract only the fields we want
+        // Extracting the feilds I want to store here
         $data = [
             'username' => $profile_data['username'] ?? '',
             'first_name' => $profile_data['firstName'] ?? '',
             'last_name' => $profile_data['lastName'] ?? '',
             'headline' => $profile_data['headline'] ?? '',
-            'summary' => $profile_data['summary'] ?? ''
+            'summary' => $profile_data['summary'] ?? '',
+            'profile_picture' => $profile_data['profilePicture'] ?? '' // Add profile picture URL
         ];
         
-        // Simple insert/update query
+        // Updated query to include profile_picture
         $stmt = $db->prepare("INSERT INTO LinkedInProfiles 
-            (user_id, linkedin_username, first_name, last_name, headline, summary) 
-            VALUES (:user_id, :username, :first_name, :last_name, :headline, :summary)
+            (user_id, linkedin_username, first_name, last_name, headline, summary, profile_picture) 
+            VALUES (:user_id, :username, :first_name, :last_name, :headline, :summary, :profile_picture)
             ON DUPLICATE KEY UPDATE 
             first_name = VALUES(first_name),
             last_name = VALUES(last_name),
             headline = VALUES(headline),
-            summary = VALUES(summary)");
+            summary = VALUES(summary),
+            profile_picture = VALUES(profile_picture)");
 
         $stmt->execute([
             ':user_id' => get_user_id(),
@@ -36,7 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_data'])) {
             ':first_name' => $data['first_name'],
             ':last_name' => $data['last_name'],
             ':headline' => $data['headline'],
-            ':summary' => $data['summary']
+            ':summary' => $data['summary'],
+            ':profile_picture' => $data['profile_picture']
         ]);
 
         echo json_encode(['success' => true]);

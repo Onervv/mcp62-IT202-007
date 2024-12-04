@@ -23,6 +23,10 @@ $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php foreach ($profiles as $profile) : ?>
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card h-100">
+                        <img src="<?php se($profile, 'profile_picture', 'https://via.placeholder.com/150'); ?>" 
+                             class="card-img-top profile-picture" 
+                             alt="Profile Picture"
+                             onerror="this.src='https://via.placeholder.com/150'">
                         <div class="card-body">
                             <h5 class="card-title">
                                 <?php se($profile, "first_name"); ?> 
@@ -63,6 +67,15 @@ $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 .card-text {
     max-height: 150px;
     overflow-y: auto;
+}
+.profile-picture {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin: 20px auto 10px;
+    border: 2px solid #e1e8ed;
+    display: block;
 }
 </style>
 

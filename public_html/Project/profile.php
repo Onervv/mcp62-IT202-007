@@ -93,31 +93,56 @@ if (isset($_POST["save"])) {
 $email = get_user_email();
 $username = get_username();
 ?>
-<form method="POST" onsubmit="return validate(this);">
-    <div class="mb-3">
-        <label for="email">Email</label>
-        <input type="email" name="email" id="email" value="<?php se($email); ?>" />
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card profile-card">
+                <div class="card-header bg-gradient">
+                    <h2 class="text-center mb-0">Profile Settings</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" onsubmit="return validate(this);">
+                        <!-- Basic Info Section -->
+                        <div class="section-title">
+                            <i class="fas fa-user-circle"></i> Basic Information
+                        </div>
+                        <div class="mb-4">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" id="email" value="<?php se($email); ?>" />
+                        </div>
+                        <div class="mb-4">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" name="username" id="username" value="<?php se($username); ?>" />
+                        </div>
+
+                        <!-- Password Reset Section -->
+                        <div class="section-title mt-4">
+                            <i class="fas fa-key"></i> Password Reset
+                        </div>
+                        <div class="mb-4">
+                            <label for="cp" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" name="currentPassword" id="cp" />
+                        </div>
+                        <div class="mb-4">
+                            <label for="np" class="form-label">New Password</label>
+                            <input type="password" class="form-control" name="newPassword" id="np" />
+                        </div>
+                        <div class="mb-4">
+                            <label for="conp" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" name="confirmPassword" id="conp" />
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button type="submit" name="save" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i> Update Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="mb-3">
-        <label for="username">Username</label>
-        <input type="text" name="username" id="username" value="<?php se($username); ?>" />
-    </div>
-    <!-- DO NOT PRELOAD PASSWORD -->
-    <div>Password Reset</div>
-    <div class="mb-3">
-        <label for="cp">Current Password</label>
-        <input type="password" name="currentPassword" id="cp" />
-    </div>
-    <div class="mb-3">
-        <label for="np">New Password</label>
-        <input type="password" name="newPassword" id="np" />
-    </div>
-    <div class="mb-3">
-        <label for="conp">Confirm Password</label>
-        <input type="password" name="confirmPassword" id="conp" />
-    </div>
-    <input type="submit" value="Update Profile" name="save" />
-</form>
+</div>
 
 <script>
     // mcp62 11/12/2024
@@ -156,6 +181,92 @@ $username = get_username();
     return isValid;
 }
 </script>
+<style>
+.profile-card {
+    border: none;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    border-radius: 15px;
+    overflow: hidden;
+    margin-top: 2rem;
+}
+
+.card-header {
+    background: linear-gradient(120deg, #0077b5, #00a0dc);
+    color: white;
+    padding: 1.2rem;
+    border-bottom: none;
+}
+
+.card-header h2 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+.section-title {
+    color: #0a66c2;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 1rem 0 1.5rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e1e8ed;
+}
+
+.section-title:first-child {
+    margin-top: 0;
+}
+
+.form-control {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e1e8ed;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+}
+
+.form-control:focus {
+    border-color: #0a66c2;
+    box-shadow: 0 0 0 0.2rem rgba(10, 102, 194, 0.15);
+}
+
+.form-label {
+    color: #2c3e50;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.btn-primary {
+    background: linear-gradient(120deg, #0077b5, #00a0dc);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-primary i {
+    margin-right: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .card-header {
+        padding: 1rem;
+    }
+}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <?php
 require_once(__DIR__ . "/../../partials/flash.php");
 ?>
