@@ -2,18 +2,121 @@
 require(__DIR__ . "/../../../partials/nav.php");
 ?>
 
-<div class="container">
-    <h2>LinkedIn Profile Search</h2>
-    <form id="searchForm">
-        <div class="mb-3">
-            <label for="profileUrl">LinkedIn Profile URL:</label>
-            <input type="text" id="profileUrl" class="form-control" 
-                   placeholder="https://www.linkedin.com/in/username" required>
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h2 class="display-4 text-gradient mb-4">LinkedIn Profile Search</h2>
+        <p class="lead text-muted">
+            Enter a LinkedIn profile URL to fetch and store profile data. Ensure the URL is in the format: 
+            <code>https://www.linkedin.com/in/username</code>.
+        </p>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <form id="searchForm" class="search-form">
+                <div class="mb-4">
+                    <label for="profileUrl" class="form-label h5 mb-3">LinkedIn Profile URL:</label>
+                    <input type="text" id="profileUrl" class="form-control form-control-lg" 
+                           placeholder="https://www.linkedin.com/in/username" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-search">
+                    <i class="fas fa-search me-2"></i> Search Profile
+                </button>
+            </form>
         </div>
-        <button type="submit" class="btn btn-primary">Search</button>
-    </form>
-    <div id="results" class="mt-3"></div>
+    </div>
+    <div id="results" class="mt-4"></div>
 </div>
+
+<style>
+.text-gradient {
+    background: linear-gradient(120deg, #0077b5, #00a0dc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.search-form {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.form-control {
+    border-radius: 0.25rem;
+    padding: 1rem 1.5rem;
+    border: 1px solid #ced4da;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+}
+
+.form-control:focus {
+    border-color: #0a66c2;
+    box-shadow: 0 0 0 0.25rem rgba(10, 102, 194, 0.25);
+}
+
+.btn-search {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.25rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(120deg, #0077b5, #00a0dc);
+    border: none;
+    transition: all 0.3s ease;
+    margin-top: 2rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.btn-search:hover {
+    background: linear-gradient(120deg, #005f8d, #0077b5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,119,181,0.3);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+code {
+    background: rgba(0,119,181,0.1);
+    color: #0077b5;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+}
+
+.profile-picture {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border: 3px solid #0a66c2;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    border-radius: 0.5rem;
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+.card-title {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.card-subtitle {
+    color: #0a66c2;
+}
+</style>
+
+<!-- Add Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
@@ -85,33 +188,5 @@ $(document).ready(function() {
     }
 });
 </script>
-
-<style>
-.profile-picture {
-    width: 150px;
-    height: 150px;
-    object-fit: cover;
-    border: 3px solid #0a66c2;
-}
-
-.card {
-    border: none;
-    box-shadow: 0 0 20px rgba(0,0,0,0.1);
-    border-radius: 15px;
-}
-
-.card-body {
-    padding: 2rem;
-}
-
-.card-title {
-    color: #2c3e50;
-    font-weight: 600;
-}
-
-.card-subtitle {
-    color: #0a66c2;
-}
-</style>
 
 <?php require(__DIR__ . "/../../../partials/flash.php"); ?>

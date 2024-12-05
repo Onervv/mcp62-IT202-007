@@ -84,29 +84,27 @@ $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php se($profile, "summary"); ?>
                             </div>
                             <div class="profile-footer">
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
                                     <a href="https://linkedin.com/in/<?php se($profile, "linkedin_username"); ?>" 
                                        target="_blank" 
                                        class="linkedin-link">
                                         <i class="fab fa-linkedin me-2"></i>View Profile
                                     </a>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <?php if (has_role("Admin")): ?>
-                                            <a href="edit_profile.php?id=<?php se($profile, 'id'); ?>" 
-                                               class="btn btn-action btn-edit">
-                                                <i class="fas fa-edit me-1"></i>Edit
-                                            </a>
-                                            <button type="button" 
-                                                    class="btn btn-action btn-delete" 
-                                                    onclick="confirmDelete(<?php se($profile, 'id'); ?>)">
-                                                <i class="fas fa-trash me-1"></i>Delete
-                                            </button>
-                                        <?php endif; ?>
-                                        <span class="saved-date ms-3">
-                                            <i class="far fa-calendar-alt me-2"></i>
-                                            <?php echo date("M j, Y", strtotime($profile["created"])); ?>
-                                        </span>
-                                    </div>
+                                    <?php if (has_role("Admin")): ?>
+                                        <a href="edit_profile.php?id=<?php se($profile, 'id'); ?>" 
+                                           class="btn btn-action btn-edit">
+                                            <i class="fas fa-edit me-1"></i>Edit
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-action btn-delete" 
+                                                onclick="confirmDelete(<?php se($profile, 'id'); ?>)">
+                                            <i class="fas fa-trash me-1"></i>Delete
+                                        </button>
+                                    <?php endif; ?>
+                                    <span class="saved-date">
+                                        <i class="far fa-calendar-alt me-2"></i>
+                                        <?php echo date("M j, Y", strtotime($profile["created"])); ?>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -118,7 +116,7 @@ $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 
 <style>
-/* New modern styling */
+/* Common Gradients */
 .text-gradient {
     background: linear-gradient(120deg, #2b4162, #12100e);
     -webkit-background-clip: text;
@@ -132,10 +130,12 @@ $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
     border-radius: 2px;
 }
 
+/* Empty State */
 .empty-state {
-    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+    background: #f8f9fa;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    text-align: center;
 }
 
 .empty-icon {
@@ -143,12 +143,13 @@ $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
     color: #2b4162;
 }
 
+/* Profile Card */
 .profile-card {
     background: #ffffff;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
     overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .profile-card:hover {
@@ -166,139 +167,120 @@ $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
     position: relative;
 }
 
+/* Profile Image */
 .profile-image-wrapper {
-    margin-top: -40px;
-    margin-bottom: 1rem;
+    margin: -40px 0 1rem;
 }
 
 .profile-picture {
     width: 100px;
     height: 100px;
-    border-radius: 50%;
     border: 4px solid #ffffff;
+    border-radius: 50%;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     object-fit: cover;
 }
 
+/* Profile Text Content */
 .profile-name {
+    color: #2b4162;
     font-size: 1.4rem;
     font-weight: 700;
-    color: #2b4162;
     margin-bottom: 0.5rem;
     text-align: center;
 }
 
 .profile-headline {
-    font-size: 0.95rem;
     color: #6c757d;
-    text-align: center;
-    margin-bottom: 1rem;
+    font-size: 0.95rem;
     font-style: italic;
+    margin-bottom: 1rem;
+    text-align: center;
 }
 
 .profile-summary {
-    font-size: 0.9rem;
-    color: #495057;
-    line-height: 1.6;
-    max-height: 100px;
-    overflow-y: auto;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
     background: #f8f9fa;
     border-radius: 10px;
+    color: #495057;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    max-height: 100px;
+    overflow-y: auto;
+    padding: 1rem;
 }
 
+/* Profile Footer */
 .profile-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
     border-top: 1px solid #e9ecef;
+    padding-top: 1rem;
 }
 
-.linkedin-link {
-    color: #2b4162;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: color 0.2s ease;
-}
-
-.linkedin-link:hover {
-    color: #0077b5;
-}
-
-.saved-date {
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-@media (max-width: 768px) {
-    .profile-card {
-        margin-bottom: 2rem;
-    }
-    
-    .profile-content {
-        padding: 0 1rem 1rem;
-    }
-}
-
-.btn-action {
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.btn-edit {
-    background: linear-gradient(145deg, #0077b5, #0a66c2);
-    color: white;
-}
-
-.btn-edit:hover {
-    background: linear-gradient(145deg, #0088cc, #0077b5);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    color: white;
-}
-
-.btn-delete {
-    background: linear-gradient(145deg, #dc3545, #c82333);
-    color: white;
-}
-
-.btn-delete:hover {
-    background: linear-gradient(145deg, #e04b59, #dc3545);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    color: white;
+.profile-footer .d-flex {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .linkedin-link {
     color: #0077b5;
-    text-decoration: none;
     font-weight: 500;
     padding: 0.5rem 1rem;
     border-radius: 8px;
-    transition: all 0.3s ease;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+    white-space: nowrap;
 }
 
 .linkedin-link:hover {
     background: rgba(0,119,181,0.1);
-    color: #0077b5;
+}
+
+/* Action Buttons */
+.btn-action {
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
     text-decoration: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-edit {
+    background: linear-gradient(145deg, #0077b5, #0a66c2);
+}
+
+.btn-delete {
+    background: linear-gradient(145deg, #dc3545, #c82333);
 }
 
 .saved-date {
     color: #6c757d;
     font-size: 0.85rem;
+    margin-left: auto;
+    white-space: nowrap;
 }
 
-.gap-2 {
-    gap: 0.75rem;
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .profile-footer .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .saved-date {
+        margin-left: 0;
+        margin-top: 0.5rem;
+    }
 }
 </style>
 
