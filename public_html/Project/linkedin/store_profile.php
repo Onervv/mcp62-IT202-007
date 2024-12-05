@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_data'])) {
             'last_name' => $profile_data['lastName'] ?? '',
             'headline' => $profile_data['headline'] ?? '',
             'summary' => $profile_data['summary'] ?? '',
-            'profile_picture' => $profile_data['profilePicture'] ?? '' // Add profile picture URL
+            'profile_picture' => $profile_data['profilePicture'] ?? ''
         ];
         
         // Updated query to include profile_picture
