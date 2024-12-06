@@ -5,7 +5,7 @@ if (!is_logged_in()) {
     die(header("Location: " . get_url("login.php")));
 }
 
-// Add this code block at the beginning of the file, after the initial require statement
+
 if (isset($_POST["delete"]) && isset($_POST["profile_id"])) {
     $profile_id = se($_POST, "profile_id", -1, false);
     if ($profile_id > 0) {
@@ -32,7 +32,7 @@ if (isset($_POST["delete"]) && isset($_POST["profile_id"])) {
     }
 }
 
-// Move this block before any HTML output or includes
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'favorite') {
     // Prevent any session messages from being included in response
     ob_clean(); // Clear any previous output
@@ -106,7 +106,6 @@ $stmt->execute([":user_id" => get_user_id()]);
 $total_profiles = $stmt->fetchColumn();
 $total_pages = ceil($total_profiles / $per_page);
 
-// Add this function at the top with other functions
 function is_favorited($profile_id) {
     $db = getDB();
     $stmt = $db->prepare(
