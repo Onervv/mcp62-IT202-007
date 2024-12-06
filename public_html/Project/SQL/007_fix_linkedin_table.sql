@@ -19,3 +19,6 @@ ADD CONSTRAINT unique_user_profile
 UNIQUE KEY (user_id, linkedin_username);
 
 SET FOREIGN_KEY_CHECKS=1;
+
+ALTER TABLE LinkedInProfiles 
+ADD COLUMN is_favorited BOOLEAN DEFAULT FALSE;

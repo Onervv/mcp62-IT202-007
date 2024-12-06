@@ -70,6 +70,7 @@ require(__DIR__ . "/../../partials/nav.php");
 .brand-name {
     background: linear-gradient(120deg, #0077b5, #0a66c2);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     position: relative;
     display: inline-block;
@@ -78,6 +79,7 @@ require(__DIR__ . "/../../partials/nav.php");
 .sight-text {
     background: linear-gradient(120deg, #0a66c2, #00a0dc);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 

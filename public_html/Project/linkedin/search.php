@@ -31,6 +31,7 @@ require(__DIR__ . "/../../../partials/nav.php");
 .text-gradient {
     background: linear-gradient(120deg, #0077b5, #00a0dc);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
