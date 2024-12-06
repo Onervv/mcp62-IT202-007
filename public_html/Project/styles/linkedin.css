@@ -1,0 +1,76 @@
+/* LinkedIn Theme Colors */
+:root {
+  --linkedin-blue: #0a66c2;
+  --linkedin-blue-dark: #004182;
+  --linkedin-gray: #6c757d;
+  --linkedin-light: #f3f2ef;
+}
+
+/* Card Styles */
+.linkedin-card {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  transition: transform 0.2s ease-in-out;
+}
+
+.linkedin-card:hover {
+  transform: translateY(-0.25rem);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.linkedin-card .card-header {
+  background: var(--linkedin-blue);
+  color: white;
+  border-bottom: none;
+  border-radius: 0.75rem 0.75rem 0 0;
+  padding: 1.25rem;
+}
+
+/* Profile Image */
+.profile-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+  object-fit: cover;
+}
+
+/* Buttons */
+.btn-linkedin {
+  background-color: var(--linkedin-blue);
+  border-color: var(--linkedin-blue);
+  color: white;
+}
+
+.btn-linkedin:hover {
+  background-color: var(--linkedin-blue-dark);
+  border-color: var(--linkedin-blue-dark);
+  color: white;
+}
+
+.btn-linkedin-outline {
+  color: var(--linkedin-blue);
+  border-color: var(--linkedin-blue);
+}
+
+.btn-linkedin-outline:hover {
+  background-color: var(--linkedin-blue);
+  color: white;
+}
+
+/* Form Controls */
+.form-control:focus {
+  border-color: var(--linkedin-blue);
+  box-shadow: 0 0 0 0.2rem rgba(10, 102, 194, 0.25);
+}
+
+/* Utilities */
+.text-linkedin {
+  color: var(--linkedin-blue);
+}
+
+.bg-linkedin {
+  background-color: var(--linkedin-blue);
+} 

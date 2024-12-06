@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_data'])) {
         $db = getDB();
         $profile_data = json_decode($_POST['profile_data'], true);
         
-        // Extracting the feilds I want to store here
+        // Extracting the fields to store here
         $data = [
             'username' => $profile_data['username'] ?? '',
             'first_name' => $profile_data['firstName'] ?? '',

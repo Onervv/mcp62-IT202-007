@@ -55,7 +55,8 @@ $nav_arr = [
                 <a href="#">LinkedIn</a>
                 <div class="nav-dropdown-content">
                     <a href="<?php echo get_url('linkedin/search.php'); ?>">Search Profiles</a>
-                    <a href="<?php echo get_url('linkedin/view_profiles.php'); ?>">View Saved Profiles</a>
+                    <a href="<?php echo get_url('linkedin/view_profiles.php'); ?>">View Profiles</a>
+                    <a href="<?php echo get_url('linkedin/create_profile.php'); ?>">Create Profile</a>
                 </div>
             </li>
             
@@ -68,3 +69,37 @@ $nav_arr = [
         <?php endif; ?>
     </ul>
 </nav>
+
+<style>
+/* Add styles for dropdown */
+.nav-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.nav-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #ffffff;
+    min-width: 160px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 1;
+}
+
+.nav-dropdown:hover .nav-dropdown-content {
+    display: block;
+}
+
+.nav-dropdown-content a {
+    color: rgba(0, 0, 0, 0.9);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.nav-dropdown-content a:hover {
+    background-color: rgba(10, 102, 194, 0.1);
+    color: #0a66c2;
+}
+</style>
