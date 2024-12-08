@@ -86,23 +86,47 @@ $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 12;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $per_page;
 
-// Modify the existing profiles query to include pagination
+// Add this after your initial pagination settings but before the query execution
+$filter = se($_GET, "filter", "all", false);
+
+// Modify the existing profiles query to include filters
 $db = getDB();
-$stmt = $db->prepare(
-    "SELECT * FROM LinkedInProfiles 
-    WHERE user_id = :user_id 
-    ORDER BY created DESC 
-    LIMIT :limit OFFSET :offset"
-);
+$query = "SELECT * FROM LinkedInProfiles WHERE user_id = :user_id";
+$params = [":user_id" => get_user_id()];
+
+// Apply filters
+switch($filter) {
+    case "recent":
+        $query .= " AND created >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+        break;
+    case "manual":
+        $query .= " AND is_manual = 1";
+        break;
+    case "api":
+        $query .= " AND is_manual = 0";
+        break;
+    case "all":
+    default:
+        // No additional conditions needed
+        break;
+}
+
+// Add the ORDER BY and LIMIT clauses
+$query .= " ORDER BY modified DESC, created DESC LIMIT :limit OFFSET :offset";
+
+// Execute the query with pagination
+$stmt = $db->prepare($query);
 $stmt->bindValue(":user_id", get_user_id(), PDO::PARAM_INT);
 $stmt->bindValue(":limit", $per_page, PDO::PARAM_INT);
 $stmt->bindValue(":offset", $offset, PDO::PARAM_INT);
 $stmt->execute();
 $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination
-$stmt = $db->prepare("SELECT COUNT(*) FROM LinkedInProfiles WHERE user_id = :user_id");
-$stmt->execute([":user_id" => get_user_id()]);
+// Get total count for pagination with filters
+$count_query = str_replace("SELECT *", "SELECT COUNT(*)", substr($query, 0, strpos($query, " LIMIT")));
+$stmt = $db->prepare($count_query);
+$stmt->bindValue(":user_id", get_user_id(), PDO::PARAM_INT);
+$stmt->execute();
 $total_profiles = $stmt->fetchColumn();
 $total_pages = ceil($total_profiles / $per_page);
 
@@ -152,17 +176,24 @@ function is_favorited($profile_id) {
                 }
                 ?>
             </a>
-            <div class="per-page-control ms-3">
-                <button class="per-page-link" onclick="togglePerPageInput(this)">
-                    <i class="bi bi-grid-3x3"></i>
-                    Per Page
-                    <input type="number" 
-                           class="per-page-count" 
-                           value="<?php echo $per_page; ?>"
-                           min="1" 
-                           max="50"
-                           onchange="updatePerPage(this.value)"
-                    >
+            <div class="filter-control ms-3">
+                <button class="filter-link" onclick="toggleFilterInput(this)">
+                    <i class="bi bi-funnel"></i>
+                    Filter
+                    <select class="filter-options" onchange="handleFilterChange(this.value)">
+                        <optgroup label="Items per page">
+                            <option value="per_page_custom">Items per page (1-100)</option>
+                            <option value="per_page_12" <?php echo $per_page === 12 ? 'selected' : ''; ?>>12 per page</option>
+                            <option value="per_page_24" <?php echo $per_page === 24 ? 'selected' : ''; ?>>24 per page</option>
+                            <option value="per_page_48" <?php echo $per_page === 48 ? 'selected' : ''; ?>>48 per page</option>
+                        </optgroup>
+                        <optgroup label="Filter by">
+                            <option value="all">All Profiles</option>
+                            <option value="recent">Recently Added</option>
+                            <option value="manual">Manually Added</option>
+                            <option value="api">API Added</option>
+                        </optgroup>
+                    </select>
                 </button>
             </div>
         </div>
@@ -403,7 +434,7 @@ function togglePerPageInput(button) {
 
 function updatePerPage(value) {
     const perPage = parseInt(value) || 12;
-    if (perPage > 0 && perPage <= 50) {
+    if (perPage >= 1 && perPage <= 100) {
         window.location.href = `${window.location.pathname}?per_page=${perPage}&page=1`;
     }
 }
@@ -416,6 +447,38 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
+function handleFilterChange(value) {
+    if (value === 'per_page_custom') {
+        const perPage = prompt('Enter number of items per page (1-100):', '12');
+        if (perPage !== null) {
+            const numPerPage = parseInt(perPage);
+            if (numPerPage >= 1 && numPerPage <= 100) {
+                updatePerPage(numPerPage);
+                return;
+            } else {
+                alert('Please enter a number between 1 and 100');
+            }
+        }
+    } else if (value.startsWith('per_page_')) {
+        const perPage = value.split('_')[2];
+        updatePerPage(perPage);
+    } else {
+        // Handle filters
+        let url = new URL(window.location.href);
+        url.searchParams.set('filter', value);
+        url.searchParams.set('page', '1'); // Reset to first page on filter change
+        window.location.href = url.toString();
+    }
+}
+
+function toggleFilterInput(button) {
+    const select = button.querySelector('.filter-options');
+    if (select) {
+        select.style.width = select.style.width === '200px' ? '24px' : '200px';
+        select.focus();
+    }
+}
 </script>
 
 <!-- Styles -->
@@ -703,21 +766,21 @@ document.addEventListener('click', function(e) {
 
 .favorite-count {
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: -4px;
+    right: -4px;
     background: #ffd700;
     color: #2b4162;
-    border-radius: 12px;
-    min-width: 24px;
-    height: 24px;
+    border-radius: 8px;
+    min-width: 16px;
+    height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     font-weight: 600;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 0 4px;
+    border: 1px solid #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    padding: 0 2px;
 }
 
 .favorite-link:hover .favorite-count {
@@ -815,6 +878,134 @@ document.addEventListener('click', function(e) {
 .favorite-link, .per-page-link {
     display: inline-flex;
     align-items: center;
+}
+
+/* Add this CSS to match the favorites link styling */
+.filter-link {
+    position: relative;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0.5rem 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 21px;
+    transition: all 0.3s ease;
+    background: #fff;
+    border: 2px solid #ffd700;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    color: #2b4162;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+.filter-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+    border-color: #f4c414;
+    color: #2b4162;
+}
+
+.filter-options {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding-right: 1rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.filter-options optgroup {
+    background: white;
+    color: #2b4162;
+    font-weight: 600;
+}
+
+.filter-options option {
+    padding: 0.5rem;
+    color: #2b4162;
+    font-weight: 500;
+}
+
+.filter-options option:hover {
+    background: #ffd700;
+}
+
+/* Target the filter text specifically */
+.filter-link span,
+.filter-link i,
+.filter-options {
+    font-size: 0.9375rem;
+    font-family: inherit;
+    font-weight: 500;
+    color: #2b4162;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+/* Force consistent height for container */
+.filter-control {
+    height: 42px !important;
+    min-height: 42px !important;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Match both buttons exact height */
+.favorite-link,
+.filter-link {
+    position: relative;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0.5rem 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 21px;
+    transition: all 0.3s ease;
+    background: #fff;
+    border: 2px solid #ffd700;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    color: #2b4162;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+/* Ensure both containers match */
+.filter-control,
+.favorite-control {
+    height: 42px !important;
+    min-height: 42px !important;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Match content styling for both buttons */
+.favorite-link span,
+.favorite-link i,
+.filter-link span,
+.filter-link i,
+.filter-options {
+    font-size: 0.9375rem;
+    font-family: inherit;
+    font-weight: 500;
+    color: #2b4162;
+    display: flex;
+    align-items: center;
+    height: 100%;
 }
 </style>
 
