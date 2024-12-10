@@ -33,6 +33,8 @@ $nav_arr = [
 ?>
 <!-- include css and js files -->
 <link rel="stylesheet" href="<?php echo get_url('styles.css'); ?>">
+<!-- include custom LinkedIn css -->
+<link rel="stylesheet" href="/Project/styles/linkedin.css">
 <script src="<?php echo get_url('helpers.js'); ?>"></script>
 <nav>
     <ul>
