@@ -19,26 +19,28 @@ $username_filter = se($_GET, "username", "", false);
 $sort = se($_GET, "sort", "created", false);
 $order = se($_GET, "order", "desc", false);
 
-// Build query
+// Build base query for fetching profiles
 $base_query = "SELECT p.*, u.username, 
     (SELECT COUNT(*) FROM UserFavorites WHERE profile_id = p.id) as favorite_count,
     CASE WHEN p.is_favorited = 1 THEN 'Yes' ELSE 'No' END as is_favorited
     FROM LinkedInProfiles p 
     LEFT JOIN Users u ON p.user_id = u.id";
+
 $params = [];
 
+// Add username filter if provided
 if (!empty($username_filter)) {
-    $base_query .= " AND u.username LIKE :username";
+    $base_query .= " WHERE u.username LIKE :username";
     $params[":username"] = "%$username_filter%";
 }
 
-// Add sorting
-$base_query .= " ORDER BY $sort $order LIMIT :limit OFFSET :offset";
+// Add sorting and pagination for the main query
+$query = $base_query . " ORDER BY $sort $order LIMIT :limit OFFSET :offset";
 
-// Execute query
+// Execute main query for profiles
 $db = getDB();
 try {
-    $stmt = $db->prepare($base_query);
+    $stmt = $db->prepare($query);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
     }
@@ -47,18 +49,28 @@ try {
     $stmt->execute();
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Get total count
-    $count_query = str_replace("SELECT p.*, ", "SELECT COUNT(DISTINCT p.id) as total ", substr($base_query, 0, strpos($base_query, " LIMIT")));
+    // Get total count using a separate query
+    $count_query = "SELECT COUNT(*) as total FROM LinkedInProfiles p 
+                   LEFT JOIN Users u ON p.user_id = u.id";
+    
+    // Add the same username filter to count query if it exists
+    if (!empty($username_filter)) {
+        $count_query .= " WHERE u.username LIKE :username";
+    }
+    
     $stmt = $db->prepare($count_query);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
+    if (!empty($username_filter)) {
+        $stmt->bindValue(":username", "%$username_filter%");
     }
     $stmt->execute();
     $total = $stmt->fetchColumn();
+    
+    // Calculate total pages
     $total_pages = ceil($total / $per_page);
 } catch (PDOException $e) {
-    flash("Error fetching data", "danger");
-    error_log(var_export($e->errorInfo, true));
+    flash("Error fetching profiles: " . var_export($e->errorInfo, true), "danger");
+    $results = [];
+    $total_pages = 0;
 }
 ?>
 
