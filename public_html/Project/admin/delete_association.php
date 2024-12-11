@@ -12,21 +12,17 @@ if (isset($_POST["profile_id"])) {
     if ($profile_id > 0) {
         $db = getDB();
         try {
-            // Simply delete the profile
+            // Delete the profile and any associated data
             $stmt = $db->prepare("DELETE FROM LinkedInProfiles WHERE id = :pid");
             $stmt->execute([":pid" => $profile_id]);
             
-            if ($stmt->rowCount() > 0) {
-                flash("Profile removed successfully", "success");
-            } else {
-                flash("Profile not found", "warning");
-            }
+            flash("Profile successfully deleted", "success");
         } catch (PDOException $e) {
-            flash("Error removing profile", "danger");
-            error_log(var_export($e->errorInfo, true));
+            flash("Error deleting profile", "danger");
         }
     }
 }
 
-die(header("Location: watchlist.php"));
+header("Location: watchlist.php");
+die();
 ?>

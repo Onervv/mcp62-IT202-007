@@ -22,8 +22,7 @@ $order = se($_GET, "order", "desc", false);
 // Build base query for fetching profiles
 $base_query = "SELECT p.*, u.username, 
     CASE WHEN p.is_favorited = 1 THEN 'Yes' ELSE 'No' END as is_favorited,
-    CASE WHEN p.is_manual = 1 THEN 'Manual' ELSE 'API' END as source,
-    (SELECT COUNT(*) FROM LinkedInProfiles WHERE user_id = u.id AND is_favorited = 1) as favorite_count
+    CASE WHEN p.is_manual = 1 THEN 'Manual' ELSE 'API' END as source
     FROM LinkedInProfiles p 
     LEFT JOIN Users u ON p.user_id = u.id";
 
@@ -33,6 +32,15 @@ $params = [];
 if (!empty($username_filter)) {
     $base_query .= " WHERE u.username LIKE :username";
     $params[":username"] = "%$username_filter%";
+}
+
+// Add filter for favorited profiles if selected
+if (isset($_GET['filter']) && $_GET['filter'] === 'favorited') {
+    if (!empty($username_filter)) {
+        $base_query .= " AND p.is_favorited = 1";
+    } else {
+        $base_query .= " WHERE p.is_favorited = 1";
+    }
 }
 
 // Add sorting and pagination for the main query
@@ -95,7 +103,14 @@ try {
                 <select name="sort" id="sort" class="form-control">
                     <option value="created" <?php echo $sort === "created" ? "selected" : ""; ?>>Created Date</option>
                     <option value="username" <?php echo $sort === "username" ? "selected" : ""; ?>>Username</option>
-                    <option value="favorite_count" <?php echo $sort === "favorite_count" ? "selected" : ""; ?>>Favorite Count</option>
+                    <option value="is_favorited" <?php echo $sort === "is_favorited" ? "selected" : ""; ?>>Is Favorited</option>
+                </select>
+            </div>
+            <div class="col">
+                <label for="filter">Filter:</label>
+                <select name="filter" id="filter" class="form-control">
+                    <option value="all" <?php echo !isset($_GET['filter']) || $_GET['filter'] === 'all' ? "selected" : ""; ?>>All Profiles</option>
+                    <option value="favorited" <?php echo isset($_GET['filter']) && $_GET['filter'] === 'favorited' ? "selected" : ""; ?>>Favorited Only</option>
                 </select>
             </div>
             <div class="col">
@@ -114,7 +129,7 @@ try {
                     <th>Username</th>
                     <th>LinkedIn Profile</th>
                     <th>Source</th>
-                    <th>Favorite Count</th>
+                    <th>Is Favorited</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -124,11 +139,11 @@ try {
                         <td><?php se($row, "username"); ?></td>
                         <td><?php se($row, "linkedin_username"); ?></td>
                         <td><?php echo se($row, "source", "N/A"); ?></td>
-                        <td><?php se($row, "favorite_count"); ?></td>
+                        <td><?php se($row, "is_favorited"); ?></td>
                         <td>
                             <a href="<?php echo get_url('admin/detailed_view_profile.php?id=' . se($row, "id", "", false)); ?>" 
                                class="btn btn-primary btn-sm">View</a>
-                            <button onclick="confirmDelete(<?php se($row, 'id'); ?>)" 
+                            <button onclick="deleteAssociation(<?php se($row, 'id'); ?>)" 
                                     class="btn btn-danger btn-sm">
                                 <i class="fas fa-trash"></i> Remove
                             </button>
@@ -159,7 +174,6 @@ try {
 <script>
 function deleteAssociation(profileId) {
     if (confirm("Are you sure you want to delete this association?")) {
-        // Create form for POST submission
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = 'delete_association.php';
@@ -175,5 +189,134 @@ function deleteAssociation(profileId) {
     }
 }
 </script>
+<style>
+    /* Watchlist Page Styling */
+.container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
 
+/* Header Styling */
+h1 {
+    color: #0d6efd;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: #6c757d;
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+/* Form Styling */
+.mb-3 {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-control, .form-select {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.25);
+}
+
+/* Table Styling */
+.table {
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table thead th {
+    background-color: #0d6efd;
+    color: white;
+    border-bottom: none;
+    padding: 1rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* Button Styling */
+.btn-primary {
+    background-color: #0d6efd;
+    border: none;
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border: none;
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    background-color: #bb2d3b;
+    transform: translateY(-1px);
+}
+
+/* Pagination Styling */
+.pagination {
+    margin-top: 2rem;
+}
+
+.page-link {
+    color: #0d6efd;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 1rem;
+}
+
+.page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.page-link:hover {
+    background-color: #e9ecef;
+    color: #0d6efd;
+}
+
+/* Alert Styling */
+.alert {
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding-top: 1rem;
+    }
+    
+    .table {
+        font-size: 0.9rem;
+    }
+    
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+    }
+}
+</style>
 <?php require(__DIR__ . "/../../../partials/flash.php"); ?> 
