@@ -21,8 +21,9 @@ $order = se($_GET, "order", "desc", false);
 
 // Build base query for fetching profiles
 $base_query = "SELECT p.*, u.username, 
-    (SELECT COUNT(*) FROM UserFavorites WHERE profile_id = p.id) as favorite_count,
-    CASE WHEN p.is_favorited = 1 THEN 'Yes' ELSE 'No' END as is_favorited
+    CASE WHEN p.is_favorited = 1 THEN 'Yes' ELSE 'No' END as is_favorited,
+    CASE WHEN p.is_manual = 1 THEN 'Manual' ELSE 'API' END as source,
+    (SELECT COUNT(*) FROM LinkedInProfiles WHERE user_id = u.id AND is_favorited = 1) as favorite_count
     FROM LinkedInProfiles p 
     LEFT JOIN Users u ON p.user_id = u.id";
 
@@ -122,13 +123,15 @@ try {
                     <tr>
                         <td><?php se($row, "username"); ?></td>
                         <td><?php se($row, "linkedin_username"); ?></td>
-                        <td><?php se($row, "source"); ?></td>
+                        <td><?php echo se($row, "source", "N/A"); ?></td>
                         <td><?php se($row, "favorite_count"); ?></td>
                         <td>
-                            <a href="<?php echo get_url('linkedin/view_profile.php?id=' . se($row, "id", "", false)); ?>" 
+                            <a href="<?php echo get_url('admin/detailed_view_profile.php?id=' . se($row, "id", "", false)); ?>" 
                                class="btn btn-primary btn-sm">View</a>
-                            <button onclick="deleteAssociation(<?php se($row, 'id'); ?>)" 
-                                    class="btn btn-danger btn-sm">Delete Association</button>
+                            <button onclick="confirmDelete(<?php se($row, 'id'); ?>)" 
+                                    class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
