@@ -20,11 +20,17 @@ $sort = se($_GET, "sort", "created", false);
 $order = se($_GET, "order", "desc", false);
 
 // Build base query for fetching profiles
-$base_query = "SELECT p.*, u.username, 
-    CASE WHEN p.is_favorited = 1 THEN 'Yes' ELSE 'No' END as is_favorited,
-    CASE WHEN p.is_manual = 1 THEN 'Manual' ELSE 'API' END as source
-    FROM LinkedInProfiles p 
-    LEFT JOIN Users u ON p.user_id = u.id";
+$base_query = "SELECT DISTINCT lp.*, 
+        COALESCE(
+            (SELECT COUNT(*) 
+             FROM UserProfileAssociations 
+             WHERE profile_id = lp.id AND is_active = 1), 0
+        ) as association_count
+        FROM LinkedInProfiles lp
+        LEFT JOIN UserProfileAssociations upa ON lp.id = upa.profile_id
+        WHERE lp.user_id = :user_id 
+           OR (upa.user_id = :user_id AND upa.is_active = 1)
+        ORDER BY lp.created DESC";
 
 $params = [];
 
