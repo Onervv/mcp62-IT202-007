@@ -50,6 +50,7 @@ $nav_arr = [
                         <a href="<?php echo get_url('admin/list_roles.php'); ?>">List Roles</a>
                         <a href="<?php echo get_url('admin/assign_roles.php'); ?>">Assign Roles</a>
                         <a href="<?php echo get_url('admin/watchlist.php'); ?>">Admin Watchlist</a>
+                        <a href="<?php echo get_url('admin/assign_entities.php'); ?>">Assign Entities</a>
                     </div>
                 </li>
             <?php endif; ?>

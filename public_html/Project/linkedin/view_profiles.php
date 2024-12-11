@@ -91,7 +91,11 @@ $filter = se($_GET, "filter", "all", false);
 
 // Modify the existing profiles query to include filters
 $db = getDB();
-$query = "SELECT * FROM LinkedInProfiles WHERE user_id = :user_id";
+$query = "SELECT DISTINCT lp.* 
+          FROM LinkedInProfiles lp
+          LEFT JOIN UserProfileAssociations upa ON lp.id = upa.profile_id
+          WHERE lp.user_id = :user_id 
+             OR (upa.user_id = :user_id AND upa.is_active = 1)";
 $params = [":user_id" => get_user_id()];
 
 // Apply filters
