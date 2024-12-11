@@ -1,5 +1,5 @@
 <?php
-require_once(__DIR__ . "/../lib/functions.php");
+require_once(dirname(__DIR__) . "/lib/functions.php");
 //Note: this is to resolve cookie issues with port numbers
 $domain = $_SERVER["HTTP_HOST"];
 if (strpos($domain, ":")) {
@@ -33,6 +33,8 @@ $nav_arr = [
 ?>
 <!-- include css and js files -->
 <link rel="stylesheet" href="<?php echo get_url('styles.css'); ?>">
+<!-- include custom LinkedIn css -->
+<link rel="stylesheet" href="/Project/styles/linkedin.css">
 <script src="<?php echo get_url('helpers.js'); ?>"></script>
 <nav>
     <ul>
@@ -47,6 +49,7 @@ $nav_arr = [
                         <a href="<?php echo get_url('admin/create_role.php'); ?>">Create Role</a>
                         <a href="<?php echo get_url('admin/list_roles.php'); ?>">List Roles</a>
                         <a href="<?php echo get_url('admin/assign_roles.php'); ?>">Assign Roles</a>
+                        <a href="<?php echo get_url('admin/watchlist.php'); ?>">Admin Watchlist</a>
                     </div>
                 </li>
             <?php endif; ?>
