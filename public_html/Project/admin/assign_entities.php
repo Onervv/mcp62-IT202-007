@@ -74,68 +74,67 @@ if (isset($_POST["associate"])) {
         try {
             $db->beginTransaction();
 
-            // Create Entity if it doesn't exist (simplified version)
-            $create_entity_stmt = $db->prepare(
-                "INSERT INTO Entities (identifier_name, description) 
-                 VALUES (CONCAT('linkedin_', :profile_id), :description)"
-            );
+            // Debug information
+            error_log("Selected Users: " . var_export($selected_users, true));
+            error_log("Selected Profiles: " . var_export($selected_profiles, true));
 
-            // Get the entity ID
-            $get_entity_stmt = $db->prepare(
-                "SELECT id FROM Entities 
-                 WHERE identifier_name = CONCAT('linkedin_', :profile_id) 
-                 LIMIT 1"
-            );
-
-            // Toggle user association
-            $toggle_assoc_stmt = $db->prepare(
-                "INSERT INTO UserEntityAssociations (user_id, entity_id, is_active) 
-                 VALUES (:uid, :eid, 1) 
+            // Create/toggle profile association
+            $toggle_profile_assoc_stmt = $db->prepare(
+                "INSERT INTO UserProfileAssociations (user_id, profile_id, is_active) 
+                 VALUES (:uid, :pid, 1) 
                  ON DUPLICATE KEY UPDATE is_active = NOT is_active"
             );
 
             foreach ($selected_profiles as $profile_id) {
                 try {
-                    // Try to get existing entity first
-                    $get_entity_stmt->execute([":profile_id" => $profile_id]);
-                    $entity_id = $get_entity_stmt->fetchColumn();
+                    error_log("Processing profile ID: " . $profile_id);
+                    
+                    // Create/toggle profile associations for each selected user
+                    foreach ($selected_users as $user_id) {
+                        try {
+                            error_log("Processing association - User: $user_id, Profile: $profile_id");
+                            
+                            // Check if association exists and get current status
+                            $check_stmt = $db->prepare(
+                                "SELECT is_active FROM UserProfileAssociations 
+                                 WHERE user_id = :uid AND profile_id = :pid"
+                            );
+                            $check_stmt->execute([
+                                ":uid" => (int)$user_id,
+                                ":pid" => $profile_id
+                            ]);
+                            $current_status = $check_stmt->fetchColumn();
+                            error_log("Current association status: " . var_export($current_status, true));
 
-                    // If no entity exists, create one
-                    if (!$entity_id) {
-                        $create_entity_stmt->execute([
-                            ":profile_id" => $profile_id,
-                            ":description" => "LinkedIn Profile Entity"
-                        ]);
-                        
-                        // Get the newly created entity ID
-                        $get_entity_stmt->execute([":profile_id" => $profile_id]);
-                        $entity_id = $get_entity_stmt->fetchColumn();
-                    }
-
-                    if ($entity_id) {
-                        // Create/toggle associations for each selected user
-                        foreach ($selected_users as $user_id) {
-                            try {
-                                $toggle_assoc_stmt->execute([
-                                    ":uid" => (int)$user_id,
-                                    ":eid" => $entity_id
-                                ]);
-                                if ($toggle_assoc_stmt->rowCount() > 0) {
-                                    $success_count++;
-                                }
-                            } catch (PDOException $e) {
-                                error_log("Association error: " . var_export($e->errorInfo, true));
-                                $error_count++;
+                            // Execute toggle
+                            $toggle_profile_assoc_stmt->execute([
+                                ":uid" => (int)$user_id,
+                                ":pid" => $profile_id
+                            ]);
+                            
+                            if ($toggle_profile_assoc_stmt->rowCount() > 0) {
+                                $success_count++;
+                                error_log("Successfully toggled association");
+                            } else {
+                                error_log("No changes made to association");
                             }
+                        } catch (PDOException $e) {
+                            $error_message = "Association error: " . var_export($e->errorInfo, true);
+                            error_log($error_message);
+                            flash($error_message, "danger");
+                            $error_count++;
                         }
                     }
                 } catch (PDOException $e) {
-                    error_log("Entity creation error: " . var_export($e->errorInfo, true));
+                    $error_message = "Profile processing error: " . var_export($e->errorInfo, true);
+                    error_log($error_message);
+                    flash($error_message, "danger");
                     $error_count++;
                 }
             }
 
             $db->commit();
+            error_log("Transaction committed. Successes: $success_count, Errors: $error_count");
 
             if ($success_count > 0) {
                 flash("Successfully toggled $success_count association(s)", "success");
@@ -145,7 +144,9 @@ if (isset($_POST["associate"])) {
             }
         } catch (Exception $e) {
             $db->rollBack();
-            flash("Error processing associations: " . $e->getMessage(), "danger");
+            $error_message = "Error processing associations: " . $e->getMessage();
+            error_log($error_message);
+            flash($error_message, "danger");
             error_log("Association error: " . var_export($e, true));
         }
     }

@@ -94,9 +94,15 @@ $db = getDB();
 $base_query = "SELECT DISTINCT lp.*, 
                       CONCAT(lp.first_name, ' ', lp.last_name) as full_name,
                       (SELECT COUNT(*) FROM UserProfileAssociations 
-                       WHERE profile_id = lp.id AND is_active = 1) as association_count
+                       WHERE profile_id = lp.id AND is_active = 1) as association_count,
+                      CASE 
+                          WHEN upa.is_active = 1 THEN true 
+                          ELSE false 
+                      END as is_associated
                FROM LinkedInProfiles lp
-               LEFT JOIN UserProfileAssociations upa ON lp.id = upa.profile_id
+               LEFT JOIN UserProfileAssociations upa 
+                   ON lp.id = upa.profile_id 
+                   AND upa.user_id = :user_id
                WHERE (lp.user_id = :user_id 
                   OR (upa.user_id = :user_id AND upa.is_active = 1))";
 
@@ -285,6 +291,16 @@ function is_favorited($profile_id) {
                                         <i class="far fa-calendar-alt me-2"></i>
                                         <?php echo date("M j, Y", strtotime($profile["created"])); ?>
                                     </span>
+                                    <?php if ($profile['is_associated']): ?>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-link me-1"></i>Associated
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ($profile['association_count'] > 0): ?>
+                                        <span class="badge bg-info" title="Number of associated users">
+                                            <i class="fas fa-users me-1"></i><?php se($profile, 'association_count'); ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
