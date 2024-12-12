@@ -21,36 +21,42 @@ $order = se($_GET, "order", "desc", false);
 
 // Build base query for fetching profiles
 $base_query = "SELECT DISTINCT lp.*, 
+        u.username as owner_username,
         COALESCE(
             (SELECT COUNT(*) 
              FROM UserProfileAssociations 
              WHERE profile_id = lp.id AND is_active = 1), 0
-        ) as association_count
+        ) as association_count,
+        CASE 
+            WHEN lp.is_manual = 0 THEN 'API'
+            ELSE 'Manual'
+        END as creation_type
         FROM LinkedInProfiles lp
         LEFT JOIN UserProfileAssociations upa ON lp.id = upa.profile_id
-        WHERE lp.user_id = :user_id 
-           OR (upa.user_id = :user_id AND upa.is_active = 1)
-        ORDER BY lp.created DESC";
+        LEFT JOIN Users u ON lp.user_id = u.id";
 
+// Initialize params array
 $params = [];
 
 // Add username filter if provided
 if (!empty($username_filter)) {
-    $base_query .= " WHERE u.username LIKE :username";
+    $base_query .= " WHERE (lp.linkedin_username LIKE :username OR u.username LIKE :username)";
     $params[":username"] = "%$username_filter%";
 }
 
-// Add filter for favorited profiles if selected
-if (isset($_GET['filter']) && $_GET['filter'] === 'favorited') {
+// Add creation type filter
+if (isset($_GET['creation_type']) && $_GET['creation_type'] !== 'all') {
+    $is_manual = $_GET['creation_type'] === 'manual' ? 1 : 0;
     if (!empty($username_filter)) {
-        $base_query .= " AND p.is_favorited = 1";
+        $base_query .= " AND lp.is_manual = :is_manual";
     } else {
-        $base_query .= " WHERE p.is_favorited = 1";
+        $base_query .= " WHERE lp.is_manual = :is_manual";
     }
+    $params[":is_manual"] = $is_manual;
 }
 
 // Add sorting and pagination for the main query
-$query = $base_query . " ORDER BY $sort $order LIMIT :limit OFFSET :offset";
+$query = $base_query . " ORDER BY lp.$sort $order LIMIT :limit OFFSET :offset";
 
 // Execute main query for profiles
 $db = getDB();
@@ -65,17 +71,27 @@ try {
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Get total count using a separate query
-    $count_query = "SELECT COUNT(*) as total FROM LinkedInProfiles p 
-                   LEFT JOIN Users u ON p.user_id = u.id";
+    $count_query = "SELECT COUNT(DISTINCT lp.id) as total 
+                    FROM LinkedInProfiles lp
+                    LEFT JOIN UserProfileAssociations upa ON lp.id = upa.profile_id
+                    LEFT JOIN Users u ON lp.user_id = u.id";
     
-    // Add the same username filter to count query if it exists
     if (!empty($username_filter)) {
-        $count_query .= " WHERE u.username LIKE :username";
+        $count_query .= " WHERE (lp.linkedin_username LIKE :username OR u.username LIKE :username)";
+    }
+    
+    if (isset($_GET['creation_type']) && $_GET['creation_type'] !== 'all') {
+        $is_manual = $_GET['creation_type'] === 'manual' ? 1 : 0;
+        $count_query .= " AND lp.is_manual = :is_manual";
     }
     
     $stmt = $db->prepare($count_query);
     if (!empty($username_filter)) {
         $stmt->bindValue(":username", "%$username_filter%");
+    }
+    if (isset($_GET['creation_type']) && $_GET['creation_type'] !== 'all') {
+        $is_manual = $_GET['creation_type'] === 'manual' ? 1 : 0;
+        $stmt->bindValue(":is_manual", $is_manual);
     }
     $stmt->execute();
     $total = $stmt->fetchColumn();
@@ -110,13 +126,15 @@ try {
                     <option value="created" <?php echo $sort === "created" ? "selected" : ""; ?>>Created Date</option>
                     <option value="username" <?php echo $sort === "username" ? "selected" : ""; ?>>Username</option>
                     <option value="is_favorited" <?php echo $sort === "is_favorited" ? "selected" : ""; ?>>Is Favorited</option>
+                    <option value="is_manual" <?php echo $sort === "is_manual" ? "selected" : ""; ?>>Source</option>
                 </select>
             </div>
             <div class="col">
-                <label for="filter">Filter:</label>
-                <select name="filter" id="filter" class="form-control">
-                    <option value="all" <?php echo !isset($_GET['filter']) || $_GET['filter'] === 'all' ? "selected" : ""; ?>>All Profiles</option>
-                    <option value="favorited" <?php echo isset($_GET['filter']) && $_GET['filter'] === 'favorited' ? "selected" : ""; ?>>Favorited Only</option>
+                <label for="creation_type">Creation Type:</label>
+                <select name="creation_type" id="creation_type" class="form-control">
+                    <option value="all" <?php echo !isset($_GET['creation_type']) || $_GET['creation_type'] === 'all' ? "selected" : ""; ?>>All</option>
+                    <option value="api" <?php echo isset($_GET['creation_type']) && $_GET['creation_type'] === 'api' ? "selected" : ""; ?>>API</option>
+                    <option value="manual" <?php echo isset($_GET['creation_type']) && $_GET['creation_type'] === 'manual' ? "selected" : ""; ?>>Manual</option>
                 </select>
             </div>
             <div class="col">
@@ -134,7 +152,7 @@ try {
                 <tr>
                     <th>Username</th>
                     <th>LinkedIn Profile</th>
-                    <th>Source</th>
+                    <th>Creation Type</th>
                     <th>Is Favorited</th>
                     <th>Actions</th>
                 </tr>
@@ -142,16 +160,16 @@ try {
             <tbody>
                 <?php foreach ($results as $row): ?>
                     <tr>
-                        <td><?php se($row, "username"); ?></td>
+                        <td><?php se($row, "owner_username"); ?></td>
                         <td><?php se($row, "linkedin_username"); ?></td>
-                        <td><?php echo se($row, "source", "N/A"); ?></td>
-                        <td><?php se($row, "is_favorited"); ?></td>
+                        <td><?php se($row, "creation_type"); ?></td>
+                        <td><?php echo $row["is_favorited"] ? "Yes" : "No"; ?></td>
                         <td>
                             <a href="<?php echo get_url('admin/detailed_view_profile.php?id=' . se($row, "id", "", false)); ?>" 
                                class="btn btn-primary btn-sm">View</a>
                             <button onclick="deleteAssociation(<?php se($row, 'id'); ?>)" 
                                     class="btn btn-danger btn-sm">
-                                <i class="fas fa-trash"></i> Remove
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         </td>
                     </tr>

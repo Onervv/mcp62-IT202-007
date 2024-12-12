@@ -71,33 +71,83 @@ if (isset($_POST["associate"])) {
         $success_count = 0;
         $error_count = 0;
 
-        // Prepare the toggle statement
-        $stmt = $db->prepare(
-            "INSERT INTO UserProfileAssociations (user_id, profile_id, is_active) 
-             VALUES (:uid, :pid, 1) 
-             ON DUPLICATE KEY UPDATE is_active = NOT is_active"
-        );
+        try {
+            $db->beginTransaction();
 
-        foreach ($selected_users as $user_id) {
+            // Debug information
+            error_log("Selected Users: " . var_export($selected_users, true));
+            error_log("Selected Profiles: " . var_export($selected_profiles, true));
+
+            // Create/toggle profile association
+            $toggle_profile_assoc_stmt = $db->prepare(
+                "INSERT INTO UserProfileAssociations (user_id, profile_id, is_active) 
+                 VALUES (:uid, :pid, 1) 
+                 ON DUPLICATE KEY UPDATE is_active = NOT is_active"
+            );
+
             foreach ($selected_profiles as $profile_id) {
                 try {
-                    $stmt->execute([
-                        ":uid" => (int)$user_id, 
-                        ":pid" => (int)$profile_id
-                    ]);
-                    $success_count++;
+                    error_log("Processing profile ID: " . $profile_id);
+                    
+                    // Create/toggle profile associations for each selected user
+                    foreach ($selected_users as $user_id) {
+                        try {
+                            error_log("Processing association - User: $user_id, Profile: $profile_id");
+                            
+                            // Check if association exists and get current status
+                            $check_stmt = $db->prepare(
+                                "SELECT is_active FROM UserProfileAssociations 
+                                 WHERE user_id = :uid AND profile_id = :pid"
+                            );
+                            $check_stmt->execute([
+                                ":uid" => (int)$user_id,
+                                ":pid" => $profile_id
+                            ]);
+                            $current_status = $check_stmt->fetchColumn();
+                            error_log("Current association status: " . var_export($current_status, true));
+
+                            // Execute toggle
+                            $toggle_profile_assoc_stmt->execute([
+                                ":uid" => (int)$user_id,
+                                ":pid" => $profile_id
+                            ]);
+                            
+                            if ($toggle_profile_assoc_stmt->rowCount() > 0) {
+                                $success_count++;
+                                error_log("Successfully toggled association");
+                            } else {
+                                error_log("No changes made to association");
+                            }
+                        } catch (PDOException $e) {
+                            $error_message = "Association error: " . var_export($e->errorInfo, true);
+                            error_log($error_message);
+                            flash($error_message, "danger");
+                            $error_count++;
+                        }
+                    }
                 } catch (PDOException $e) {
-                    error_log(var_export($e->errorInfo, true));
+                    $error_message = "Profile processing error: " . var_export($e->errorInfo, true);
+                    error_log($error_message);
+                    flash($error_message, "danger");
                     $error_count++;
                 }
             }
-        }
 
-        if ($success_count > 0) {
-            flash("Successfully toggled $success_count association(s)", "success");
-        }
-        if ($error_count > 0) {
-            flash("Failed to toggle $error_count association(s)", "danger");
+            $db->commit();
+            error_log("Transaction committed. Successes: $success_count, Errors: $error_count");
+
+            if ($success_count > 0) {
+                flash("Successfully toggled $success_count association(s)", "success");
+            }
+            if ($error_count > 0) {
+                flash("Failed to toggle $error_count association(s)", "danger");
+            }
+        } catch (Exception $e) {
+            $db->rollBack();
+            $error_message = "Error processing associations: " . $e->getMessage();
+            error_log($error_message);
+            flash($error_message, "danger");
+            error_log("Association error: " . var_export($e, true));
         }
     }
 }
