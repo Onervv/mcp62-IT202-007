@@ -8,3 +8,4 @@ Milestone 2 : https://learn.ethereallab.app/assignment/IT202-007-F2024/it202-api
 
 Milestone 3 : https://learn.ethereallab.app/assignment/IT202-007-F2024/it202-api-project-milestone-3-2024-m24/grade/mcp62
 
+.FINISHED.
