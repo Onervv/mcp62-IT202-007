@@ -89,21 +89,38 @@ $offset = ($page - 1) * $per_page;
 // Add this after your initial pagination settings but before the query execution
 $filter = se($_GET, "filter", "all", false);
 
-// Modify the existing profiles query to include filters
+// Modify the query and filtering section (around line 89-116):
 $db = getDB();
-$query = "SELECT * FROM LinkedInProfiles WHERE user_id = :user_id";
+$base_query = "SELECT DISTINCT lp.*, 
+                      CONCAT(lp.first_name, ' ', lp.last_name) as full_name,
+                      (SELECT COUNT(*) FROM UserProfileAssociations 
+                       WHERE profile_id = lp.id AND is_active = 1) as association_count,
+                      CASE 
+                          WHEN upa.is_active = 1 THEN true 
+                          ELSE false 
+                      END as is_associated
+               FROM LinkedInProfiles lp
+               LEFT JOIN UserProfileAssociations upa 
+                   ON lp.id = upa.profile_id 
+                   AND upa.user_id = :user_id
+               WHERE (lp.user_id = :user_id 
+                  OR (upa.user_id = :user_id AND upa.is_active = 1))";
+
 $params = [":user_id" => get_user_id()];
 
 // Apply filters
 switch($filter) {
     case "recent":
-        $query .= " AND created >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+        $base_query .= " AND lp.created >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
         break;
     case "manual":
-        $query .= " AND is_manual = 1";
+        $base_query .= " AND lp.is_manual = 1";
         break;
     case "api":
-        $query .= " AND is_manual = 0";
+        $base_query .= " AND lp.is_manual = 0";
+        break;
+    case "favorites":
+        $base_query .= " AND lp.is_favorited = 1";
         break;
     case "all":
     default:
@@ -111,21 +128,34 @@ switch($filter) {
         break;
 }
 
+// Add search functionality
+$search = se($_GET, "search", "", false);
+if (!empty($search)) {
+    $base_query .= " AND (lp.linkedin_username LIKE :search 
+                         OR lp.first_name LIKE :search 
+                         OR lp.last_name LIKE :search)";
+    $params[":search"] = "%$search%";
+}
+
 // Add the ORDER BY and LIMIT clauses
-$query .= " ORDER BY modified DESC, created DESC LIMIT :limit OFFSET :offset";
+$query = $base_query . " ORDER BY lp.modified DESC, lp.created DESC LIMIT :limit OFFSET :offset";
 
 // Execute the query with pagination
 $stmt = $db->prepare($query);
-$stmt->bindValue(":user_id", get_user_id(), PDO::PARAM_INT);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
 $stmt->bindValue(":limit", $per_page, PDO::PARAM_INT);
 $stmt->bindValue(":offset", $offset, PDO::PARAM_INT);
 $stmt->execute();
 $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination with filters
-$count_query = str_replace("SELECT *", "SELECT COUNT(*)", substr($query, 0, strpos($query, " LIMIT")));
+// Get total count for pagination
+$count_query = "SELECT COUNT(DISTINCT lp.id) FROM (" . $base_query . ") as lp";
 $stmt = $db->prepare($count_query);
-$stmt->bindValue(":user_id", get_user_id(), PDO::PARAM_INT);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
 $stmt->execute();
 $total_profiles = $stmt->fetchColumn();
 $total_pages = ceil($total_profiles / $per_page);
@@ -214,7 +244,7 @@ function is_favorited($profile_id) {
         <?php else : ?>
             <?php foreach ($profiles as $profile) : ?>
                 <div class="col-md-6 col-lg-4">
-                    <div class="profile-card">
+                    <div class="profile-card" data-profile-id="<?php se($profile, 'id'); ?>">
                         <div class="profile-banner">
                             <button class="btn favorite-btn" 
                                     onclick="toggleFavorite(this, <?php se($profile, 'id'); ?>)" 
@@ -261,6 +291,16 @@ function is_favorited($profile_id) {
                                         <i class="far fa-calendar-alt me-2"></i>
                                         <?php echo date("M j, Y", strtotime($profile["created"])); ?>
                                     </span>
+                                    <?php if ($profile['is_associated']): ?>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-link me-1"></i>Associated
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ($profile['association_count'] > 0): ?>
+                                        <span class="badge bg-info" title="Number of associated users">
+                                            <i class="fas fa-users me-1"></i><?php se($profile, 'association_count'); ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -273,20 +313,65 @@ function is_favorited($profile_id) {
             <div class="col-12">
                 <nav aria-label="Profile navigation">
                     <ul class="pagination pagination-lg justify-content-center">
+                        <?php
+                        // Previous button
+                        $prev_params = $_GET;
+                        $prev_params['page'] = $page - 1;
+                        $prev_url = http_build_query($prev_params);
+                        ?>
                         <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
-                            <a class="page-link rounded-pill" href="?page=<?php echo $page-1; ?>&per_page=<?php echo $per_page; ?>">
+                            <a class="page-link rounded-pill" href="?<?php echo $prev_url; ?>">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
-                        
-                        <?php for($i = 1; $i <= $total_pages; $i++): ?>
+
+                        <?php
+                        // Calculate range of pages to show
+                        $range = 2; // Show 2 pages before and after current page
+                        $start_page = max(1, $page - $range);
+                        $end_page = min($total_pages, $page + $range);
+
+                        // Always show first page
+                        if ($start_page > 1) {
+                            $params = $_GET;
+                            $params['page'] = 1;
+                            $url = http_build_query($params);
+                            echo "<li class='page-item'><a class='page-link rounded-pill' href='?$url'>1</a></li>";
+                            if ($start_page > 2) {
+                                echo "<li class='page-item disabled'><span class='page-link'>...</span></li>";
+                            }
+                        }
+
+                        // Show page numbers
+                        for ($i = $start_page; $i <= $end_page; $i++) {
+                            $params = $_GET;
+                            $params['page'] = $i;
+                            $url = http_build_query($params);
+                            ?>
                             <li class="page-item <?php echo $page == $i ? 'active' : ''; ?>">
-                                <a class="page-link rounded-pill" href="?page=<?php echo $i; ?>&per_page=<?php echo $per_page; ?>"><?php echo $i; ?></a>
+                                <a class="page-link rounded-pill" href="?<?php echo $url; ?>"><?php echo $i; ?></a>
                             </li>
-                        <?php endfor; ?>
-                        
+                            <?php
+                        }
+
+                        // Always show last page
+                        if ($end_page < $total_pages) {
+                            if ($end_page < $total_pages - 1) {
+                                echo "<li class='page-item disabled'><span class='page-link'>...</span></li>";
+                            }
+                            $params = $_GET;
+                            $params['page'] = $total_pages;
+                            $url = http_build_query($params);
+                            echo "<li class='page-item'><a class='page-link rounded-pill' href='?$url'>$total_pages</a></li>";
+                        }
+
+                        // Next button
+                        $next_params = $_GET;
+                        $next_params['page'] = $page + 1;
+                        $next_url = http_build_query($next_params);
+                        ?>
                         <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
-                            <a class="page-link rounded-pill" href="?page=<?php echo $page+1; ?>&per_page=<?php echo $per_page; ?>">
+                            <a class="page-link rounded-pill" href="?<?php echo $next_url; ?>">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
@@ -317,29 +402,36 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function confirmDelete(profileId) {
-    if (confirm("Are you sure you want to delete this profile?")) {
-        // Create a form dynamically
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.style.display = 'none';
+    if (!profileId) {
+        flash("Invalid profile ID", "danger");
+        return;
+    }
 
-        // Add profile_id input
-        const profileInput = document.createElement('input');
-        profileInput.type = 'hidden';
-        profileInput.name = 'profile_id';
-        profileInput.value = profileId;
-        form.appendChild(profileInput);
+    if (confirm("Are you sure you want to delete this profile? This action cannot be undone.")) {
+        const formData = new FormData();
+        formData.append('profile_id', profileId);
 
-        // Add delete action input
-        const deleteInput = document.createElement('input');
-        deleteInput.type = 'hidden';
-        deleteInput.name = 'delete';
-        deleteInput.value = '1';
-        form.appendChild(deleteInput);
-
-        // Add form to document and submit
-        document.body.appendChild(form);
-        form.submit();
+        fetch('delete_profile.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.querySelector(`.profile-card[data-profile-id="${profileId}"]`);
+                if (card) {
+                    card.closest('.col-md-6').remove();
+                }
+                flash("Profile deleted successfully", "success");
+                setTimeout(() => location.reload(), 500);
+            } else {
+                flash(data.message || "Failed to delete profile", "danger");
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            flash("Error deleting profile", "danger");
+        });
     }
 }
 
@@ -481,532 +573,5 @@ function toggleFilterInput(button) {
 }
 </script>
 
-<!-- Styles -->
-
-<style>
-/* Common Gradients */
-.text-gradient {
-    background: linear-gradient(120deg, #2b4162, #12100e);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.subtitle-divider {
-    width: 80px;
-    height: 4px;
-    background: linear-gradient(90deg, #2b4162, #12100e);
-    border-radius: 2px;
-}
-
-/* Empty State */
-.empty-state {
-    background: #f8f9fa;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    text-align: center;
-}
-
-.empty-icon {
-    font-size: 4rem;
-    color: #2b4162;
-}
-
-/* Profile Card */
-.profile-card {
-    background: #ffffff;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.profile-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
-}
-
-.profile-banner {
-    height: 120px;
-    background: linear-gradient(120deg, #1a2b43, #4a90e2);
-    position: relative;
-}
-
-.profile-content {
-    padding: 60px 1.5rem 1.5rem;
-    position: relative;
-}
-
-/* Profile Image */
-.profile-image-wrapper {
-    position: absolute;
-    top: -50px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2;
-}
-
-.profile-picture {
-    width: 100px;
-    height: 100px;
-    border: 4px solid #ffffff;
-    border-radius: 50%;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    object-fit: cover;
-}
-
-/* Profile Text Content */
-.profile-name {
-    color: #2b4162;
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    text-align: center;
-}
-
-.profile-headline {
-    color: #6c757d;
-    font-size: 0.95rem;
-    font-style: italic;
-    margin-bottom: 1rem;
-    text-align: center;
-}
-
-.profile-summary {
-    background: #f8f9fa;
-    border-radius: 10px;
-    color: #495057;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
-    max-height: 100px;
-    overflow-y: auto;
-    padding: 1rem;
-}
-
-/* Profile Footer */
-.profile-footer {
-    border-top: 1px solid #e9ecef;
-    padding-top: 1rem;
-}
-
-.profile-footer .d-flex {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.linkedin-link {
-    color: #0077b5;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    text-decoration: none;
-    transition: background-color 0.3s ease;
-    white-space: nowrap;
-}
-
-.linkedin-link:hover {
-    background: rgba(0,119,181,0.1);
-}
-
-/* Action Buttons */
-.btn-action {
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    text-decoration: none;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    white-space: nowrap;
-    cursor: pointer;
-}
-
-.btn-action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.btn-edit {
-    background: linear-gradient(145deg, #0077b5, #0a66c2);
-}
-
-.btn-delete {
-    background: linear-gradient(145deg, #dc3545, #c82333);
-}
-
-.saved-date {
-    color: #6c757d;
-    font-size: 0.85rem;
-    margin-left: auto;
-    white-space: nowrap;
-}
-
-/* Responsive adjustments */
-@media (max-width: 576px) {
-    .profile-footer .d-flex {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .saved-date {
-        margin-left: 0;
-        margin-top: 0.5rem;
-    }
-}
-
-/* Update the Favorite Button styling */
-.favorite-btn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid white;
-    transition: all 0.3s ease;
-    z-index: 3;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 0;
-}
-
-.favorite-btn:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: scale(1.1);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.favorite-btn i {
-    color: #6c757d;
-    text-shadow: none;
-    transition: all 0.3s ease;
-}
-
-.favorite-btn.active {
-    background: #fff;
-    border-color: #ffd700;
-}
-
-.favorite-btn.active i {
-    color: #ffd700;  /* Golden color for filled star */
-}
-
-/* Add these new styles */
-.header-section {
-    background: #f8f9fa;
-    padding: 1rem 2rem;
-    border-radius: 15px;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-}
-
-.filter-controls .btn-group {
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.filter-controls .btn {
-    padding: 0.5rem 1rem;
-    font-weight: 500;
-    border: none;
-    position: relative;
-    transition: all 0.3s ease;
-}
-
-.filter-controls .btn:hover {
-    transform: translateY(-1px);
-}
-
-.filter-controls .btn.active {
-    background: #2b4162;
-    color: white;
-}
-
-/* Update profile card for filtering */
-.profile-card {
-    transition: all 0.3s ease;
-}
-
-.profile-card.hidden {
-    display: none;
-}
-
-/* Add to your existing styles */
-.favorite-link {
-    position: relative;
-    height: 42px;
-    padding: 0.5rem 1.25rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 21px;
-    transition: all 0.3s ease;
-    background: #fff;
-    border: 2px solid #ffd700;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    color: #2b4162;
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.favorite-link:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
-    border-color: #f4c414;
-    color: #2b4162;
-    text-decoration: none;
-}
-
-.favorite-count {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #ffd700;
-    color: #2b4162;
-    border-radius: 8px;
-    min-width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.65rem;
-    font-weight: 600;
-    border: 1px solid #fff;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    padding: 0 2px;
-}
-
-.favorite-link:hover .favorite-count {
-    background: #f4c414;
-    transform: scale(1.1);
-}
-
-/* Per Page Control */
-.per-page-link {
-    position: relative;
-    height: 42px;
-    padding: 0.5rem 1.25rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 21px;
-    transition: all 0.3s ease;
-    background: #fff;
-    border: 2px solid #ffd700;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    color: #2b4162;
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.per-page-link:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
-    border-color: #f4c414;
-}
-
-.per-page-count {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: #ffd700;
-    color: #2b4162;
-    border-radius: 12px;
-    width: 24px;
-    height: 24px;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    text-align: center;
-    padding: 0;
-    font-size: 0.8rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.per-page-count:focus {
-    outline: none;
-    background: #fff;
-    border-color: #ffd700;
-    width: 40px;
-}
-
-/* Pagination Styles */
-.pagination {
-    gap: 0.5rem;
-}
-
-.pagination .page-link {
-    border-radius: 8px;
-    border: none;
-    color: #2b4162;
-    padding: 0.5rem 1rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.pagination .page-item.active .page-link {
-    background: #ffd700;
-    color: #2b4162;
-}
-
-.pagination .page-link:hover {
-    background: #f4c414;
-    color: #2b4162;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
-}
-
-.pagination .page-item.disabled .page-link {
-    background: #f8f9fa;
-    color: #6c757d;
-}
-
-/* Update just these CSS rules */
-.filter-controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.favorite-link, .per-page-link {
-    display: inline-flex;
-    align-items: center;
-}
-
-/* Add this CSS to match the favorites link styling */
-.filter-link {
-    position: relative;
-    height: 42px !important;
-    min-height: 42px !important;
-    padding: 0.5rem 1.25rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    border-radius: 21px;
-    transition: all 0.3s ease;
-    background: #fff;
-    border: 2px solid #ffd700;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    color: #2b4162;
-    font-weight: 500;
-    text-decoration: none;
-    cursor: pointer;
-    font-family: inherit;
-    line-height: 1.5;
-    box-sizing: border-box;
-}
-
-.filter-link:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
-    border-color: #f4c414;
-    color: #2b4162;
-}
-
-.filter-options {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding-right: 1rem;
-    outline: none;
-    box-sizing: border-box;
-}
-
-.filter-options optgroup {
-    background: white;
-    color: #2b4162;
-    font-weight: 600;
-}
-
-.filter-options option {
-    padding: 0.5rem;
-    color: #2b4162;
-    font-weight: 500;
-}
-
-.filter-options option:hover {
-    background: #ffd700;
-}
-
-/* Target the filter text specifically */
-.filter-link span,
-.filter-link i,
-.filter-options {
-    font-size: 0.9375rem;
-    font-family: inherit;
-    font-weight: 500;
-    color: #2b4162;
-    display: flex;
-    align-items: center;
-    height: 100%;
-}
-
-/* Force consistent height for container */
-.filter-control {
-    height: 42px !important;
-    min-height: 42px !important;
-    display: flex;
-    align-items: center;
-    box-sizing: border-box;
-}
-
-/* Match both buttons exact height */
-.favorite-link,
-.filter-link {
-    position: relative;
-    height: 42px !important;
-    min-height: 42px !important;
-    padding: 0.5rem 1.25rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    border-radius: 21px;
-    transition: all 0.3s ease;
-    background: #fff;
-    border: 2px solid #ffd700;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    color: #2b4162;
-    font-weight: 500;
-    text-decoration: none;
-    cursor: pointer;
-    font-family: inherit;
-    line-height: 1.5;
-    box-sizing: border-box;
-}
-
-/* Ensure both containers match */
-.filter-control,
-.favorite-control {
-    height: 42px !important;
-    min-height: 42px !important;
-    display: flex;
-    align-items: center;
-    box-sizing: border-box;
-}
-
-/* Match content styling for both buttons */
-.favorite-link span,
-.favorite-link i,
-.filter-link span,
-.filter-link i,
-.filter-options {
-    font-size: 0.9375rem;
-    font-family: inherit;
-    font-weight: 500;
-    color: #2b4162;
-    display: flex;
-    align-items: center;
-    height: 100%;
-}
-</style>
 
 <?php require(__DIR__ . "/../../../partials/flash.php"); ?>
