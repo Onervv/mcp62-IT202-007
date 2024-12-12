@@ -89,25 +89,32 @@ $offset = ($page - 1) * $per_page;
 // Add this after your initial pagination settings but before the query execution
 $filter = se($_GET, "filter", "all", false);
 
-// Modify the existing profiles query to include filters
+// Modify the query and filtering section (around line 89-116):
 $db = getDB();
-$query = "SELECT DISTINCT lp.* 
-          FROM LinkedInProfiles lp
-          LEFT JOIN UserProfileAssociations upa ON lp.id = upa.profile_id
-          WHERE lp.user_id = :user_id 
-             OR (upa.user_id = :user_id AND upa.is_active = 1)";
+$base_query = "SELECT DISTINCT lp.*, 
+                      CONCAT(lp.first_name, ' ', lp.last_name) as full_name,
+                      (SELECT COUNT(*) FROM UserProfileAssociations 
+                       WHERE profile_id = lp.id AND is_active = 1) as association_count
+               FROM LinkedInProfiles lp
+               LEFT JOIN UserProfileAssociations upa ON lp.id = upa.profile_id
+               WHERE (lp.user_id = :user_id 
+                  OR (upa.user_id = :user_id AND upa.is_active = 1))";
+
 $params = [":user_id" => get_user_id()];
 
 // Apply filters
 switch($filter) {
     case "recent":
-        $query .= " AND created >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+        $base_query .= " AND lp.created >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
         break;
     case "manual":
-        $query .= " AND is_manual = 1";
+        $base_query .= " AND lp.is_manual = 1";
         break;
     case "api":
-        $query .= " AND is_manual = 0";
+        $base_query .= " AND lp.is_manual = 0";
+        break;
+    case "favorites":
+        $base_query .= " AND lp.is_favorited = 1";
         break;
     case "all":
     default:
@@ -115,21 +122,34 @@ switch($filter) {
         break;
 }
 
+// Add search functionality
+$search = se($_GET, "search", "", false);
+if (!empty($search)) {
+    $base_query .= " AND (lp.linkedin_username LIKE :search 
+                         OR lp.first_name LIKE :search 
+                         OR lp.last_name LIKE :search)";
+    $params[":search"] = "%$search%";
+}
+
 // Add the ORDER BY and LIMIT clauses
-$query .= " ORDER BY modified DESC, created DESC LIMIT :limit OFFSET :offset";
+$query = $base_query . " ORDER BY lp.modified DESC, lp.created DESC LIMIT :limit OFFSET :offset";
 
 // Execute the query with pagination
 $stmt = $db->prepare($query);
-$stmt->bindValue(":user_id", get_user_id(), PDO::PARAM_INT);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
 $stmt->bindValue(":limit", $per_page, PDO::PARAM_INT);
 $stmt->bindValue(":offset", $offset, PDO::PARAM_INT);
 $stmt->execute();
 $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination with filters
-$count_query = str_replace("SELECT *", "SELECT COUNT(*)", substr($query, 0, strpos($query, " LIMIT")));
+// Get total count for pagination
+$count_query = "SELECT COUNT(DISTINCT lp.id) FROM (" . $base_query . ") as lp";
 $stmt = $db->prepare($count_query);
-$stmt->bindValue(":user_id", get_user_id(), PDO::PARAM_INT);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
 $stmt->execute();
 $total_profiles = $stmt->fetchColumn();
 $total_pages = ceil($total_profiles / $per_page);
@@ -218,7 +238,7 @@ function is_favorited($profile_id) {
         <?php else : ?>
             <?php foreach ($profiles as $profile) : ?>
                 <div class="col-md-6 col-lg-4">
-                    <div class="profile-card">
+                    <div class="profile-card" data-profile-id="<?php se($profile, 'id'); ?>">
                         <div class="profile-banner">
                             <button class="btn favorite-btn" 
                                     onclick="toggleFavorite(this, <?php se($profile, 'id'); ?>)" 
@@ -277,20 +297,65 @@ function is_favorited($profile_id) {
             <div class="col-12">
                 <nav aria-label="Profile navigation">
                     <ul class="pagination pagination-lg justify-content-center">
+                        <?php
+                        // Previous button
+                        $prev_params = $_GET;
+                        $prev_params['page'] = $page - 1;
+                        $prev_url = http_build_query($prev_params);
+                        ?>
                         <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
-                            <a class="page-link rounded-pill" href="?page=<?php echo $page-1; ?>&per_page=<?php echo $per_page; ?>">
+                            <a class="page-link rounded-pill" href="?<?php echo $prev_url; ?>">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
-                        
-                        <?php for($i = 1; $i <= $total_pages; $i++): ?>
+
+                        <?php
+                        // Calculate range of pages to show
+                        $range = 2; // Show 2 pages before and after current page
+                        $start_page = max(1, $page - $range);
+                        $end_page = min($total_pages, $page + $range);
+
+                        // Always show first page
+                        if ($start_page > 1) {
+                            $params = $_GET;
+                            $params['page'] = 1;
+                            $url = http_build_query($params);
+                            echo "<li class='page-item'><a class='page-link rounded-pill' href='?$url'>1</a></li>";
+                            if ($start_page > 2) {
+                                echo "<li class='page-item disabled'><span class='page-link'>...</span></li>";
+                            }
+                        }
+
+                        // Show page numbers
+                        for ($i = $start_page; $i <= $end_page; $i++) {
+                            $params = $_GET;
+                            $params['page'] = $i;
+                            $url = http_build_query($params);
+                            ?>
                             <li class="page-item <?php echo $page == $i ? 'active' : ''; ?>">
-                                <a class="page-link rounded-pill" href="?page=<?php echo $i; ?>&per_page=<?php echo $per_page; ?>"><?php echo $i; ?></a>
+                                <a class="page-link rounded-pill" href="?<?php echo $url; ?>"><?php echo $i; ?></a>
                             </li>
-                        <?php endfor; ?>
-                        
+                            <?php
+                        }
+
+                        // Always show last page
+                        if ($end_page < $total_pages) {
+                            if ($end_page < $total_pages - 1) {
+                                echo "<li class='page-item disabled'><span class='page-link'>...</span></li>";
+                            }
+                            $params = $_GET;
+                            $params['page'] = $total_pages;
+                            $url = http_build_query($params);
+                            echo "<li class='page-item'><a class='page-link rounded-pill' href='?$url'>$total_pages</a></li>";
+                        }
+
+                        // Next button
+                        $next_params = $_GET;
+                        $next_params['page'] = $page + 1;
+                        $next_url = http_build_query($next_params);
+                        ?>
                         <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
-                            <a class="page-link rounded-pill" href="?page=<?php echo $page+1; ?>&per_page=<?php echo $per_page; ?>">
+                            <a class="page-link rounded-pill" href="?<?php echo $next_url; ?>">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
@@ -321,29 +386,36 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function confirmDelete(profileId) {
-    if (confirm("Are you sure you want to delete this profile?")) {
-        // Create a form dynamically
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.style.display = 'none';
+    if (!profileId) {
+        flash("Invalid profile ID", "danger");
+        return;
+    }
 
-        // Add profile_id input
-        const profileInput = document.createElement('input');
-        profileInput.type = 'hidden';
-        profileInput.name = 'profile_id';
-        profileInput.value = profileId;
-        form.appendChild(profileInput);
+    if (confirm("Are you sure you want to delete this profile? This action cannot be undone.")) {
+        const formData = new FormData();
+        formData.append('profile_id', profileId);
 
-        // Add delete action input
-        const deleteInput = document.createElement('input');
-        deleteInput.type = 'hidden';
-        deleteInput.name = 'delete';
-        deleteInput.value = '1';
-        form.appendChild(deleteInput);
-
-        // Add form to document and submit
-        document.body.appendChild(form);
-        form.submit();
+        fetch('delete_profile.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.querySelector(`.profile-card[data-profile-id="${profileId}"]`);
+                if (card) {
+                    card.closest('.col-md-6').remove();
+                }
+                flash("Profile deleted successfully", "success");
+                setTimeout(() => location.reload(), 500);
+            } else {
+                flash(data.message || "Failed to delete profile", "danger");
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            flash("Error deleting profile", "danger");
+        });
     }
 }
 
